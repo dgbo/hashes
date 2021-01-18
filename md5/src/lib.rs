@@ -44,30 +44,46 @@ pub use digest::{self, Digest};
 
 use crate::utils::compress;
 
-use block_buffer::BlockBuffer;
-use digest::generic_array::typenum::{U16, U64};
-use digest::generic_array::GenericArray;
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
+use digest::{
+    block_buffer::BlockBuffer,
+    generic_array::{
+        typenum::{Unsigned, U16, U64},
+        GenericArray,
+    },
+    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+};
 
 mod consts;
 
-/// The MD5 hasher
+/// Core MD5 hasher state.
 #[derive(Clone)]
-pub struct Md5 {
-    length_bytes: u64,
-    buffer: BlockBuffer<U64>,
+pub struct Md5Core {
+    blocks: u64,
     state: [u32; 4],
 }
 
-impl Default for Md5 {
+impl Default for Md5Core {
+    #[inline]
     fn default() -> Self {
-        Md5 {
-            length_bytes: 0,
-            buffer: Default::default(),
+        Self {
+            blocks: 0,
             state: consts::S0,
         }
     }
 }
+
+impl Reset for Md5Core {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl AlgorithmName for Md5Core {
+    const NAME: &'static str = "Md5";
+}
+
+opaque_debug::implement!(Md5Core);
 
 #[inline(always)]
 fn convert(d: &GenericArray<u8, U64>) -> &[u8; 64] {
@@ -77,50 +93,38 @@ fn convert(d: &GenericArray<u8, U64>) -> &[u8; 64] {
     }
 }
 
-impl Md5 {
-    #[inline]
-    fn finalize_inner(&mut self) {
-        let s = &mut self.state;
-        let l = (self.length_bytes << 3) as u64;
-        self.buffer.len64_padding_le(l, |d| compress(s, convert(d)));
-    }
-}
-
-impl BlockInput for Md5 {
+impl UpdateCore for Md5Core {
     type BlockSize = U64;
-}
 
-impl Update for Md5 {
     #[inline]
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
+    fn update_blocks(&mut self, blocks: &[GenericArray<u8, Self::BlockSize>]) {
         // Unlike Sha1 and Sha2, the length value in MD5 is defined as
         // the length of the message mod 2^64 - ie: integer overflow is OK.
-        self.length_bytes = self.length_bytes.wrapping_add(input.len() as u64);
-        let s = &mut self.state;
-        self.buffer.input_block(input, |d| compress(s, convert(d)));
+        self.blocks = self.blocks.wrapping_add(blocks.len() as u64);
+        for block in blocks {
+            compress(&mut self.state, convert(block))
+        }
     }
 }
 
-impl FixedOutputDirty for Md5 {
+impl FixedOutputCore for Md5Core {
     type OutputSize = U16;
 
     #[inline]
-    fn finalize_into_dirty(&mut self, out: &mut GenericArray<u8, U16>) {
-        self.finalize_inner();
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        let bs = Self::BlockSize::U64;
+        let len = 8 * (buffer.get_pos() as u64 + bs * self.blocks);
+        buffer.len64_padding_le(len, |d| compress(&mut self.state, convert(d)));
+
         for (chunk, v) in out.chunks_exact_mut(4).zip(self.state.iter()) {
             chunk.copy_from_slice(&v.to_le_bytes());
         }
     }
 }
 
-impl Reset for Md5 {
-    fn reset(&mut self) {
-        self.state = consts::S0;
-        self.length_bytes = 0;
-        self.buffer.reset();
-    }
-}
-
-opaque_debug::implement!(Md5);
-digest::impl_write!(Md5);
+/// MD5 hasher state.
+pub type Md5 = UpdateCoreWrapper<Md5Core>;

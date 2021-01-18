@@ -1,18 +1,15 @@
 #![allow(clippy::many_single_char_names)]
-use block_buffer::block_padding::ZeroPadding;
-use block_buffer::BlockBuffer;
-use core::convert::TryInto;
-use digest::{consts::U32, generic_array::GenericArray};
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
+use digest::block_buffer::block_padding::ZeroPadding;
+use core::{fmt, convert::TryInto};
+use digest::{consts::U32, generic_array::{GenericArray, typenum::Unsigned}};
+use digest::{AlgorithmName, FixedOutputCore, Reset, UpdateCore};
 
-pub(crate) type Block = [u8; 32];
+use crate::params::{Gost94Params, SBox, Block};
 
 const C: Block = [
     0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
     0x00, 0xff, 0xff, 0x00, 0xff, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0xff,
 ];
-
-pub type SBox = [[u8; 16]; 8];
 
 fn sbox(a: u32, s: &SBox) -> u32 {
     let mut v = 0;
@@ -114,15 +111,16 @@ fn psi(block: &mut Block) {
     block.copy_from_slice(&out);
 }
 
+/// Core GOST94 algorithm generic over parameters.
 #[derive(Clone)]
-struct Gost94State {
-    s: SBox,
+pub struct Gost94Core<P: Gost94Params> {
     h: Block,
     n: [u64; 4],
     sigma: [u64; 4],
+    _m: core::marker::PhantomData<P>,
 }
 
-impl Gost94State {
+impl<P: Gost94Params> Gost94Core<P> {
     fn shuffle(&mut self, m: &Block, s: &Block) {
         let mut res = Block::default();
         res.copy_from_slice(s);
@@ -141,23 +139,23 @@ impl Gost94State {
         let mut s = Block::default();
         s.copy_from_slice(&self.h);
         let k = p(x(&self.h, m));
-        encrypt(&mut s[0..8], k, &self.s);
+        encrypt(&mut s[0..8], k, &P::S_BOX);
 
         let u = a(self.h);
         let v = a(a(*m));
         let k = p(x(&u, &v));
-        encrypt(&mut s[8..16], k, &self.s);
+        encrypt(&mut s[8..16], k, &P::S_BOX);
 
         let mut u = a(u);
         x_mut(&mut u, &C);
         let v = a(a(v));
         let k = p(x(&u, &v));
-        encrypt(&mut s[16..24], k, &self.s);
+        encrypt(&mut s[16..24], k, &P::S_BOX);
 
         let u = a(u);
         let v = a(a(v));
         let k = p(x(&u, &v));
-        encrypt(&mut s[24..32], k, &self.s);
+        encrypt(&mut s[24..32], k, &P::S_BOX);
 
         self.shuffle(m, &s);
     }
@@ -178,6 +176,7 @@ impl Gost94State {
         adc(&mut self.n[3], 0, &mut carry);
     }
 
+    #[inline(always)]
     fn process_block(&mut self, block: &GenericArray<u8, U32>) {
         let block = unsafe { &*(block.as_ptr() as *const [u8; 32]) };
         self.f(block);
@@ -185,76 +184,76 @@ impl Gost94State {
     }
 }
 
-/// GOST94
-#[derive(Clone)]
-pub struct Gost94 {
-    buffer: BlockBuffer<U32>,
-    state: Gost94State,
-    h0: Block,
+impl<P: Gost94Params> AlgorithmName for Gost94Core<P> {
+    const NAME: &'static str = P::NAME;
 }
 
-impl Gost94 {
-    /// Create new [`Gost94`] instance with given S-Box and IV
-    pub fn new(s: SBox, h: Block) -> Self {
-        let n = Default::default();
-        let sigma = Default::default();
-        Gost94 {
-            buffer: Default::default(),
-            h0: h,
-            state: Gost94State { s, h, n, sigma },
+impl<P: Gost94Params> fmt::Debug for Gost94Core<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.write_str(P::NAME)?;
+        f.write_str("Core { .. }")
+    }
+}
+
+impl<P: Gost94Params> UpdateCore for Gost94Core<P> {
+    type BlockSize = U32;
+
+    #[inline]
+    fn update_blocks(&mut self, blocks: &[GenericArray<u8, Self::BlockSize>]) {
+        let len = Self::BlockSize::USIZE * blocks.len();
+        self.update_n(len);
+        blocks.iter().for_each(|b| self.process_block(b));
+    }
+}
+
+impl<P: Gost94Params> Reset for Gost94Core<P> {
+    #[inline]
+    fn reset(&mut self) {
+        self.n = Default::default();
+        self.h = P::H0;
+        self.sigma = Default::default();
+    }
+}
+
+impl<P: Gost94Params> Default for Gost94Core<P> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            h: P::H0,
+            n: Default::default(),
+            sigma: Default::default(),
+            _m: Default::default(),
         }
     }
 }
 
-impl BlockInput for Gost94 {
-    type BlockSize = U32;
-}
-
-impl Update for Gost94 {
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
-        let s = &mut self.state;
-        s.update_n(input.len());
-        self.buffer.input_block(input, |d| s.process_block(d));
-    }
-}
-
-impl FixedOutputDirty for Gost94 {
+impl<P: Gost94Params> FixedOutputCore for Gost94Core<P> {
     type OutputSize = U32;
 
-    fn finalize_into_dirty(&mut self, out: &mut GenericArray<u8, U32>) {
-        let self_state = &mut self.state;
-
-        if self.buffer.position() != 0 {
-            let block = self
-                .buffer
-                .pad_with::<ZeroPadding>()
-                .expect("we never use input_lazy");
-
-            self_state.process_block(block);
+    #[inline]
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut block_buffer::BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        if buffer.get_pos() != 0 {
+            self.update_n(buffer.get_pos());
+            let block = buffer.pad_with::<ZeroPadding>();
+            self.process_block(block);
         }
 
         let mut buf = Block::default();
-        for (o, v) in buf.chunks_exact_mut(8).zip(self_state.n.iter()) {
+        for (o, v) in buf.chunks_exact_mut(8).zip(self.n.iter()) {
             o.copy_from_slice(&v.to_le_bytes());
         }
-        self_state.f(&buf);
+        self.f(&buf);
 
-        for (o, v) in buf.chunks_exact_mut(8).zip(self_state.sigma.iter()) {
+        for (o, v) in buf.chunks_exact_mut(8).zip(self.sigma.iter()) {
             o.copy_from_slice(&v.to_le_bytes());
         }
-        self_state.f(&buf);
+        self.f(&buf);
 
-        out.copy_from_slice(&self.state.h);
-    }
-}
-
-impl Reset for Gost94 {
-    fn reset(&mut self) {
-        self.buffer.reset();
-        self.state.n = Default::default();
-        self.state.h = self.h0;
-        self.state.sigma = Default::default();
+        out.copy_from_slice(&self.h);
     }
 }
 
@@ -264,6 +263,3 @@ fn adc(a: &mut u64, b: u64, carry: &mut u64) {
     *a = ret as u64;
     *carry = (ret >> 64) as u64;
 }
-
-opaque_debug::implement!(Gost94);
-digest::impl_write!(Gost94);

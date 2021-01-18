@@ -38,33 +38,28 @@ extern crate std;
 use core::convert::TryInto;
 pub use digest::{self, Digest};
 
-use block_buffer::BlockBuffer;
 use digest::{
-    consts::{U16, U64},
-    generic_array::GenericArray,
+    block_buffer::BlockBuffer,
+    generic_array::{
+        typenum::{Unsigned, U16, U64},
+        GenericArray,
+    },
+    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
 };
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
 
-// initial values for Md4State
+// initial values for Md4Core
 const S: [u32; 4] = [0x6745_2301, 0xEFCD_AB89, 0x98BA_DCFE, 0x1032_5476];
 
 type Block = GenericArray<u8, U64>;
 
-#[derive(Copy, Clone)]
-struct Md4State {
+#[derive(Clone)]
+pub struct Md4Core {
+    blocks: u64,
     s: [u32; 4],
 }
 
-/// The MD4 hasher
-#[derive(Clone, Default)]
-pub struct Md4 {
-    length_bytes: u64,
-    buffer: BlockBuffer<U64>,
-    state: Md4State,
-}
-
-impl Md4State {
-    fn process_block(&mut self, input: &Block) {
+impl Md4Core {
+    fn compress(&mut self, input: &Block) {
         fn f(x: u32, y: u32, z: u32) -> u32 {
             (x & y) | (!x & z)
         }
@@ -137,54 +132,58 @@ impl Md4State {
     }
 }
 
-impl Default for Md4State {
+impl Default for Md4Core {
+    #[inline]
     fn default() -> Self {
-        Md4State { s: S }
+        Self { blocks: 0, s: S }
     }
 }
 
-impl Md4 {
-    fn finalize_inner(&mut self) {
-        let state = &mut self.state;
-        let l = (self.length_bytes << 3) as u64;
-        self.buffer.len64_padding_le(l, |d| state.process_block(d))
+impl Reset for Md4Core {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
     }
 }
 
-impl BlockInput for Md4 {
+impl AlgorithmName for Md4Core {
+    const NAME: &'static str = "Md4";
+}
+
+opaque_debug::implement!(Md4Core);
+
+impl UpdateCore for Md4Core {
     type BlockSize = U64;
-}
 
-impl Update for Md4 {
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
+    #[inline]
+    fn update_blocks(&mut self, blocks: &[Block]) {
         // Unlike Sha1 and Sha2, the length value in MD4 is defined as
         // the length of the message mod 2^64 - ie: integer overflow is OK.
-        self.length_bytes = self.length_bytes.wrapping_add(input.len() as u64);
-        let s = &mut self.state;
-        self.buffer.input_block(input, |d| s.process_block(d));
+        self.blocks = self.blocks.wrapping_add(blocks.len() as u64);
+        for block in blocks {
+            self.compress(block);
+        }
     }
 }
 
-impl FixedOutputDirty for Md4 {
+impl FixedOutputCore for Md4Core {
     type OutputSize = U16;
 
-    fn finalize_into_dirty(&mut self, out: &mut digest::Output<Self>) {
-        self.finalize_inner();
+    #[inline]
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        let bs = Self::BlockSize::U64;
+        let len = 8 * (buffer.get_pos() as u64 + bs * self.blocks);
+        buffer.len64_padding_le(len, |block| self.compress(block));
 
-        for (chunk, v) in out.chunks_exact_mut(4).zip(self.state.s.iter()) {
+        for (chunk, v) in out.chunks_exact_mut(4).zip(self.s.iter()) {
             chunk.copy_from_slice(&v.to_le_bytes());
         }
     }
 }
 
-impl Reset for Md4 {
-    fn reset(&mut self) {
-        self.state = Default::default();
-        self.length_bytes = 0;
-        self.buffer.reset();
-    }
-}
-
-opaque_debug::implement!(Md4);
-digest::impl_write!(Md4);
+/// MD4 hasher state.
+pub type Md4 = UpdateCoreWrapper<Md4Core>;
