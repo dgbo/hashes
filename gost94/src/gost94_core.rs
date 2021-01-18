@@ -1,10 +1,13 @@
 #![allow(clippy::many_single_char_names)]
+use core::{convert::TryInto, fmt};
 use digest::block_buffer::block_padding::ZeroPadding;
-use core::{fmt, convert::TryInto};
-use digest::{consts::U32, generic_array::{GenericArray, typenum::Unsigned}};
+use digest::{
+    consts::U32,
+    generic_array::{typenum::Unsigned, GenericArray},
+};
 use digest::{AlgorithmName, FixedOutputCore, Reset, UpdateCore};
 
-use crate::params::{Gost94Params, SBox, Block};
+use crate::params::{Block, Gost94Params, SBox};
 
 const C: Block = [
     0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,

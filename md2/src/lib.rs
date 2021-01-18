@@ -38,7 +38,7 @@ pub use digest::{self, Digest};
 
 use digest::{
     block_buffer::{block_padding::Pkcs7, BlockBuffer},
-    generic_array::{GenericArray, typenum::U16},
+    generic_array::{typenum::U16, GenericArray},
     AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
 };
 
