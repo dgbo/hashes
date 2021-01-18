@@ -20,8 +20,8 @@ impl Default for Streebog256Core {
     fn default() -> Self {
         let state = StreebogState {
             h: [1u8; 64],
-            n: [0u32; 8],
-            sigma: [0u8; 64],
+            n: Default::default(),
+            sigma: Default::default(),
         };
         Self { state }
     }
