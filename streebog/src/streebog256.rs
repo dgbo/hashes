@@ -5,7 +5,7 @@ use digest::{
         typenum::{U32, U64},
         GenericArray,
     },
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 use crate::streebog::StreebogState;
@@ -14,35 +14,6 @@ use crate::streebog::StreebogState;
 #[derive(Clone)]
 pub struct Streebog256Core {
     state: StreebogState,
-}
-
-impl Default for Streebog256Core {
-    #[inline]
-    fn default() -> Self {
-        let state = StreebogState {
-            h: [1u8; 64],
-            n: Default::default(),
-            sigma: Default::default(),
-        };
-        Self { state }
-    }
-}
-
-impl Reset for Streebog256Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
-    }
-}
-
-impl AlgorithmName for Streebog256Core {
-    const NAME: &'static str = "Streebog256";
-}
-
-impl fmt::Debug for Streebog256Core {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Streebog256Core { ... }")
-    }
 }
 
 impl UpdateCore for Streebog256Core {
@@ -65,6 +36,28 @@ impl FixedOutputCore for Streebog256Core {
     ) {
         self.state.finalize(buffer);
         out.copy_from_slice(&self.state.h[32..])
+    }
+}
+
+impl Default for Streebog256Core {
+    #[inline]
+    fn default() -> Self {
+        let state = StreebogState {
+            h: [1u8; 64],
+            n: Default::default(),
+            sigma: Default::default(),
+        };
+        Self { state }
+    }
+}
+
+impl AlgorithmName for Streebog256Core {
+    const NAME: &'static str = "Streebog256";
+}
+
+impl fmt::Debug for Streebog256Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Streebog256Core { ... }")
     }
 }
 

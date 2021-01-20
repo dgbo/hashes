@@ -38,7 +38,7 @@ use digest::{
     block_buffer::BlockBuffer,
     consts::{U20, U64},
     generic_array::{typenum::Unsigned, GenericArray},
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 mod block;
@@ -91,13 +91,6 @@ impl Default for Ripemd160Core {
             h: H0,
             block_len: 0,
         }
-    }
-}
-
-impl Reset for Ripemd160Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 

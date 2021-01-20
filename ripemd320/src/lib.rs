@@ -40,7 +40,7 @@ use core::fmt;
 use digest::block_buffer::BlockBuffer;
 use digest::consts::{U40, U64};
 use digest::generic_array::{typenum::Unsigned, GenericArray};
-use digest::{AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper};
+use digest::{AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper};
 
 mod block;
 use block::{compress, Block, DIGEST_BUF_LEN, H0};
@@ -92,13 +92,6 @@ impl Default for Ripemd320Core {
             h: H0,
             block_len: 0,
         }
-    }
-}
-
-impl Reset for Ripemd320Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 

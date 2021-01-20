@@ -113,7 +113,7 @@ replace = "digest 0.10.0-pre.1 (git+https://github.com/RustCrypto/traits?branch=
 [[package]]
 name = "digest"
 version = "0.10.0-pre.1"
-source = "git+https://github.com/RustCrypto/traits?branch=digest_dev_fix#0ef34c7ffc694178a3f6c5fa20a5e31a857d78b3"
+source = "git+https://github.com/RustCrypto/traits?branch=digest_dev_fix#f75e611f8cfbee385c6b5527da58d2560de877bc"
 dependencies = [
  "blobby 0.3.0",
  "block-buffer 0.10.0-pre (registry+https://github.com/rust-lang/crates.io-index)",

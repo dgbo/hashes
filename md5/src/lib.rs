@@ -48,7 +48,7 @@ use digest::{
         typenum::{Unsigned, U16, U64},
         GenericArray,
     },
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 mod consts;
@@ -103,13 +103,6 @@ impl Default for Md5Core {
             block_len: 0,
             state: consts::S0,
         }
-    }
-}
-
-impl Reset for Md5Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 

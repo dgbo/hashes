@@ -68,7 +68,7 @@ use digest::{
         typenum::{Unsigned, U128, U28, U32, U48, U64},
         GenericArray,
     },
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 mod consts;
@@ -131,13 +131,6 @@ macro_rules! implement {
                     state: $init,
                     block_len: 0,
                 }
-            }
-        }
-
-        impl Reset for $name {
-            #[inline]
-            fn reset(&mut self) {
-                *self = Default::default();
             }
         }
 

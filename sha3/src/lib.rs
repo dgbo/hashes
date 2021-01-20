@@ -71,7 +71,7 @@ use digest::{
     block_buffer::BlockBuffer,
     consts::{U104, U136, U144, U168, U200, U28, U32, U48, U64, U72},
     generic_array::GenericArray,
-    AlgorithmName, ExtendableOutputCore, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, ExtendableOutputCore, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
     XofReaderCore, XofReaderCoreWrapper,
 };
 

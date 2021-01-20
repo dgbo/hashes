@@ -40,7 +40,7 @@ use digest::{
         typenum::{Unsigned, U20, U64},
         GenericArray,
     },
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 mod compress;
@@ -91,13 +91,6 @@ impl Default for Sha1Core {
     #[inline]
     fn default() -> Self {
         Self { h: H, block_len: 0 }
-    }
-}
-
-impl Reset for Sha1Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 

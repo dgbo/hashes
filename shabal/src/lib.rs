@@ -46,7 +46,7 @@ use digest::{
     block_buffer::{block_padding::Iso7816, BlockBuffer},
     consts::{U24, U28, U32, U48, U64},
     generic_array::{typenum::Unsigned, GenericArray},
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 use state::{compress, compress_final, Block, BlockSize, EngineState};
 
@@ -96,13 +96,6 @@ macro_rules! impl_core {
                 Self {
                     state: EngineState::new($init),
                 }
-            }
-        }
-
-        impl Reset for $name {
-            #[inline]
-            fn reset(&mut self) {
-                *self = Default::default();
             }
         }
 

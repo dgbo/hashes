@@ -41,7 +41,7 @@ use digest::{
         typenum::{Unsigned, U16, U64},
         GenericArray,
     },
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 type Block = GenericArray<u8, U64>;
@@ -95,13 +95,6 @@ impl Default for Md4Core {
             state,
             block_len: 0,
         }
-    }
-}
-
-impl Reset for Md4Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 

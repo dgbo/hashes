@@ -50,13 +50,6 @@ macro_rules! sha3_impl {
             }
         }
 
-        impl Reset for $name {
-            #[inline]
-            fn reset(&mut self) {
-                *self = Default::default();
-            }
-        }
-
         impl AlgorithmName for $name {
             const NAME: &'static str = stringify!($full_name);
         }
@@ -120,13 +113,6 @@ macro_rules! shake_impl {
                 Self {
                     state: Default::default(),
                 }
-            }
-        }
-
-        impl Reset for $name {
-            #[inline]
-            fn reset(&mut self) {
-                *self = Default::default();
             }
         }
 

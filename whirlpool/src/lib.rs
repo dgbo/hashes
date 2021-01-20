@@ -53,7 +53,7 @@ use digest::{
     block_buffer::BlockBuffer,
     consts::U64,
     generic_array::{typenum::Unsigned, GenericArray},
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 type Block = GenericArray<u8, U64>;
@@ -122,13 +122,6 @@ impl Default for WhirlpoolCore {
             bit_len: Default::default(),
             state: [0u64; 8],
         }
-    }
-}
-
-impl Reset for WhirlpoolCore {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 

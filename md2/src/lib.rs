@@ -37,7 +37,7 @@ use core::fmt;
 use digest::{
     block_buffer::{block_padding::Pkcs7, BlockBuffer},
     generic_array::{typenum::U16, GenericArray},
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    AlgorithmName, FixedOutputCore, UpdateCore, UpdateCoreWrapper,
 };
 
 mod consts;
@@ -112,13 +112,6 @@ impl Default for Md2Core {
             x: [0; 48],
             checksum: Default::default(),
         }
-    }
-}
-
-impl Reset for Md2Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
     }
 }
 
