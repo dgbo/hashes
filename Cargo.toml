@@ -22,3 +22,4 @@ opt-level = 2
 
 [replace]
 "digest:0.10.0-pre.1" = { git = "https://github.com/RustCrypto/traits", branch = "digest_dev_fix" }
+"block-buffer:0.10.0-pre" = { git = "https://github.com/RustCrypto/utils" }

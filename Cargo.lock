@@ -40,6 +40,12 @@ name = "block-buffer"
 version = "0.10.0-pre"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a5ae77a4961d75e3e4505bbe155705bda23ff5948209c8face08f75c2cd52a0"
+replace = "block-buffer 0.10.0-pre (git+https://github.com/RustCrypto/utils)"
+
+[[package]]
+name = "block-buffer"
+version = "0.10.0-pre"
+source = "git+https://github.com/RustCrypto/utils#39ef46c61f4658e9dc2a4cd91aa7cda0f8397adc"
 dependencies = [
  "block-padding 0.3.0-pre",
  "generic-array",
@@ -54,8 +60,7 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 [[package]]
 name = "block-padding"
 version = "0.3.0-pre"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3992d179d1dd2fa87869057217d43cf88ad31d4e44738d159a5a6caafdf63ae6"
+source = "git+https://github.com/RustCrypto/utils#39ef46c61f4658e9dc2a4cd91aa7cda0f8397adc"
 dependencies = [
  "generic-array",
 ]
@@ -118,7 +123,7 @@ version = "0.10.0-pre.1"
 source = "git+https://github.com/RustCrypto/traits?branch=digest_dev_fix#8e6d2b2fc6c09ee85aa8623169fb79065bbdeebb"
 dependencies = [
  "blobby 0.3.0",
- "block-buffer 0.10.0-pre",
+ "block-buffer 0.10.0-pre (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array",
 ]
 
@@ -136,7 +141,7 @@ dependencies = [
 name = "gost94"
 version = "0.9.1"
 dependencies = [
- "block-buffer 0.10.0-pre",
+ "block-buffer 0.10.0-pre (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.10.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex-literal",
 ]
@@ -319,7 +324,6 @@ version = "0.9.2"
 dependencies = [
  "digest 0.10.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex-literal",
- "opaque-debug",
 ]
 
 [[package]]
@@ -344,18 +348,6 @@ checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
 name = "whirlpool"
 version = "0.9.0"
 dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
+ "digest 0.10.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex-literal",
- "opaque-debug",
- "whirlpool-asm",
-]
-
-[[package]]
-name = "whirlpool-asm"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbb23be8b0dec6fafef14563c42ec98bbfc33f2a97ed5bc99cd8b50ea5c68097"
-dependencies = [
- "cc",
 ]

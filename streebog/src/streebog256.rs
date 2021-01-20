@@ -1,3 +1,4 @@
+use core::fmt;
 use digest::{
     block_buffer::BlockBuffer,
     generic_array::{
@@ -38,7 +39,11 @@ impl AlgorithmName for Streebog256Core {
     const NAME: &'static str = "Streebog256";
 }
 
-opaque_debug::implement!(Streebog256Core);
+impl fmt::Debug for Streebog256Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Streebog256Core { ... }")
+    }
+}
 
 impl UpdateCore for Streebog256Core {
     type BlockSize = U64;

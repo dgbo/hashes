@@ -40,160 +40,114 @@
     html_logo_url = "https://raw.githubusercontent.com/RustCrypto/meta/master/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/RustCrypto/meta/master/logo.svg"
 )]
-#![deny(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[cfg(feature = "std")]
-extern crate std;
+pub use digest::{self, Digest};
 
-#[cfg(feature = "asm")]
-use whirlpool_asm as utils;
-
-#[cfg(not(feature = "asm"))]
-mod utils;
-
-#[cfg(not(feature = "asm"))]
 mod consts;
+mod compress;
+use compress::compress;
 
-pub use digest::Digest;
+use core::fmt;
+use digest::{
+    block_buffer::BlockBuffer,
+    consts::U64,
+    generic_array::{typenum::Unsigned, GenericArray},
+    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+};
 
-use crate::utils::compress;
+type Block = GenericArray<u8, U64>;
 
-use block_buffer::{block_padding::Iso7816, BlockBuffer};
-use digest::{consts::U64, generic_array::GenericArray};
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
-
-type BlockSize = U64;
-
-/// Structure representing the state of a Whirlpool computation
+/// Core Whirlpool hasher state.
 #[derive(Clone)]
-pub struct Whirlpool {
-    bit_length: [u8; 32],
-    buffer: BlockBuffer<U64>,
-    #[cfg(not(feature = "asm"))]
-    hash: [u64; 8],
-    #[cfg(feature = "asm")]
-    hash: [u8; 64],
+pub struct WhirlpoolCore {
+    bit_len: [u64; 4],
+    state: [u64; 8],
 }
 
-impl Default for Whirlpool {
-    fn default() -> Self {
-        Self {
-            bit_length: [0u8; 32],
-            buffer: BlockBuffer::default(),
-            #[cfg(not(feature = "asm"))]
-            hash: [0u64; 8],
-            #[cfg(feature = "asm")]
-            hash: [0u8; 64],
+impl UpdateCore for WhirlpoolCore {
+    type BlockSize = U64;
+
+    #[inline]
+    fn update_blocks(&mut self, blocks: &[Block]) {
+        // number of bits in one block
+        let n = 8*Self::BlockSize::U64;
+        self.update_len(n*(blocks.len() as u64));
+        for block in blocks {
+            compress(&mut self.state, block)
         }
     }
 }
 
-fn convert(block: &GenericArray<u8, U64>) -> &[u8; 64] {
-    #[allow(unsafe_code)]
-    unsafe {
-        &*(block.as_ptr() as *const [u8; 64])
-    }
-}
-
-impl Whirlpool {
-    #![cfg_attr(
-        feature = "cargo-clippy",
-        allow(clippy::identity_op, clippy::double_parens)
-    )]
-    fn update_len(&mut self, len: u64) {
-        let len_bits = [
-            (len >> (56 + 5)) as u8,
-            ((len >> (48 + 5)) & 0xff) as u8,
-            ((len >> (40 + 5)) & 0xff) as u8,
-            ((len >> (32 + 5)) & 0xff) as u8,
-            ((len >> (24 + 5)) & 0xff) as u8,
-            ((len >> (16 + 5)) & 0xff) as u8,
-            ((len >> (8 + 5)) & 0xff) as u8,
-            ((len >> (0 + 5)) & 0xff) as u8,
-            ((len << 3) & 0xff) as u8,
-        ];
-
-        let mut carry = false;
-        for i in 0..32 {
-            let mut x = u16::from(self.bit_length[self.bit_length.len() - i - 1]);
-
-            if i < len_bits.len() {
-                x += u16::from(len_bits[len_bits.len() - i - 1]);
-            } else if !carry {
-                break;
-            }
-
-            if carry {
-                x += 1;
-            }
-
-            carry = x > 0xff;
-            let pos = self.bit_length.len() - i - 1;
-            self.bit_length[pos] = (x & 0xff) as u8;
-        }
-    }
-
-    fn finalize_inner(&mut self) {
-        // padding
-        let hash = &mut self.hash;
-        let pos = self.buffer.position();
-        let buf = self
-            .buffer
-            .pad_with::<Iso7816>()
-            .expect("we never use input_lazy");
-
-        if pos + 1 > self.bit_length.len() {
-            compress(hash, convert(buf));
-            buf[..(pos + 1)].iter_mut().for_each(|b| *b = 0);
-        }
-
-        buf[32..].copy_from_slice(&self.bit_length);
-        compress(hash, convert(buf));
-    }
-}
-
-impl BlockInput for Whirlpool {
-    type BlockSize = BlockSize;
-}
-
-impl Update for Whirlpool {
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
-        self.update_len(input.len() as u64);
-        let hash = &mut self.hash;
-        self.buffer
-            .input_block(input, |b| compress(hash, convert(b)));
-    }
-}
-
-impl FixedOutputDirty for Whirlpool {
+impl FixedOutputCore for WhirlpoolCore {
     type OutputSize = U64;
 
-    #[cfg(not(feature = "asm"))]
-    fn finalize_into_dirty(&mut self, out: &mut GenericArray<u8, U64>) {
-        self.finalize_inner();
-        for (chunk, v) in out.chunks_exact_mut(8).zip(self.hash.iter()) {
+    #[inline]
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        let pos = buffer.get_pos();
+        self.update_len(8*pos as u64);
+
+        let mut buf = [0u8; 4*8];
+        for (chunk, v) in buf.chunks_exact_mut(8).zip(self.bit_len.iter()) {
+            chunk.copy_from_slice(&v.to_be_bytes());
+        }
+
+        let mut state = self.state;
+        buffer.digest_pad(&buf, |block| compress(&mut state, block));
+
+        for (chunk, v) in out.chunks_exact_mut(8).zip(state.iter()) {
             chunk.copy_from_slice(&v.to_be_bytes());
         }
     }
+}
 
-    #[cfg(feature = "asm")]
-    fn finalize_into_dirty(&mut self, out: &mut GenericArray<u8, U64>) {
-        self.finalize_inner();
-        out.copy_from_slice(&self.hash)
+impl WhirlpoolCore {
+    fn update_len(&mut self, len: u64) {
+        let mut carry = 0;
+        adc(&mut self.bit_len[3], len, &mut carry);
+        adc(&mut self.bit_len[2], 0, &mut carry);
+        adc(&mut self.bit_len[1], 0, &mut carry);
+        adc(&mut self.bit_len[0], 0, &mut carry);
     }
 }
 
-impl Reset for Whirlpool {
-    fn reset(&mut self) {
-        self.bit_length = [0u8; 32];
-        self.buffer.reset();
-        for v in self.hash.iter_mut() {
-            *v = 0;
+impl Default for WhirlpoolCore {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            bit_len: Default::default(),
+            state: [0u64; 8],
         }
     }
 }
 
-opaque_debug::implement!(Whirlpool);
-digest::impl_write!(Whirlpool);
+impl Reset for WhirlpoolCore {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl AlgorithmName for WhirlpoolCore {
+    const NAME: &'static str = "WhirlpoolCore";
+}
+
+impl fmt::Debug for WhirlpoolCore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("WhirlpoolCore { ... }")
+    }
+}
+
+/// Whirlpool hasher state.
+pub type Whirlpool = UpdateCoreWrapper<WhirlpoolCore>;
+
+#[inline(always)]
+fn adc(a: &mut u64, b: u64, carry: &mut u64) {
+    let ret = (*a as u128) + (b as u128) + (*carry as u128);
+    *a = ret as u64;
+    *carry = (ret >> 64) as u64;
+}
