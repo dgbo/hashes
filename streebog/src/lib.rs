@@ -19,7 +19,7 @@
 //!
 //! // same for Streebog512
 //! let mut hasher = Streebog512::new();
-//! hasher.update(&b"The quick brown fox jumps over the lazy dog.");
+//! hasher.update("The quick brown fox jumps over the lazy dog.");
 //! let result = hasher.finalize();
 //!
 //! assert_eq!(result[..], hex!("
