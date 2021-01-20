@@ -31,7 +31,6 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "block-padding 0.2.1",
  "generic-array",
 ]
 
@@ -47,15 +46,9 @@ name = "block-buffer"
 version = "0.10.0-pre"
 source = "git+https://github.com/RustCrypto/utils#39ef46c61f4658e9dc2a4cd91aa7cda0f8397adc"
 dependencies = [
- "block-padding 0.3.0-pre",
+ "block-padding",
  "generic-array",
 ]
-
-[[package]]
-name = "block-padding"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
 name = "block-padding"
@@ -120,7 +113,7 @@ replace = "digest 0.10.0-pre.1 (git+https://github.com/RustCrypto/traits?branch=
 [[package]]
 name = "digest"
 version = "0.10.0-pre.1"
-source = "git+https://github.com/RustCrypto/traits?branch=digest_dev_fix#8e6d2b2fc6c09ee85aa8623169fb79065bbdeebb"
+source = "git+https://github.com/RustCrypto/traits?branch=digest_dev_fix#0ef34c7ffc694178a3f6c5fa20a5e31a857d78b3"
 dependencies = [
  "blobby 0.3.0",
  "block-buffer 0.10.0-pre (registry+https://github.com/rust-lang/crates.io-index)",
@@ -303,11 +296,9 @@ dependencies = [
 name = "sha3"
 version = "0.9.1"
 dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
+ "digest 0.10.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex-literal",
  "keccak",
- "opaque-debug",
 ]
 
 [[package]]
