@@ -31,72 +31,88 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[cfg(feature = "std")]
-extern crate std;
+pub use digest::{self, Digest};
+
+use core::{fmt, slice::from_ref};
+use digest::{
+    block_buffer::BlockBuffer,
+    generic_array::{
+        typenum::{Unsigned, U20, U64},
+        GenericArray,
+    },
+    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+};
 
 mod compress;
 mod consts;
 
-use crate::compress::compress;
-use crate::consts::{H, STATE_LEN};
-use block_buffer::BlockBuffer;
-use digest::consts::{U20, U64};
-pub use digest::{self, Digest};
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
+use compress::compress;
+use consts::{STATE_LEN, H};
 
-/// Structure representing the state of a SHA-1 computation
+type Block = GenericArray<u8, U64>;
+
+/// Core SHA-1 hasher state.
 #[derive(Clone)]
-pub struct Sha1 {
+pub struct Sha1Core {
     h: [u32; STATE_LEN],
-    len: u64,
-    buffer: BlockBuffer<U64>,
+    block_len: u64,
 }
 
-impl Default for Sha1 {
-    fn default() -> Self {
-        Sha1 {
-            h: H,
-            len: 0u64,
-            buffer: Default::default(),
-        }
-    }
-}
-
-impl BlockInput for Sha1 {
+impl UpdateCore for Sha1Core {
     type BlockSize = U64;
-}
 
-impl Update for Sha1 {
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
-        // Assumes that `length_bits<<3` will not overflow
-        self.len += input.len() as u64;
-        let state = &mut self.h;
-        self.buffer.input_blocks(input, |d| compress(state, d));
+    fn update_blocks(&mut self, blocks: &[Block]) {
+        self.block_len += blocks.len() as u64;
+        compress(&mut self.h, blocks);
     }
 }
 
-impl FixedOutputDirty for Sha1 {
+impl FixedOutputCore for Sha1Core {
     type OutputSize = U20;
 
-    fn finalize_into_dirty(&mut self, out: &mut digest::Output<Self>) {
-        let s = &mut self.h;
-        let l = self.len << 3;
-        self.buffer
-            .len64_padding_be(l, |d| compress(s, core::slice::from_ref(d)));
-        for (chunk, v) in out.chunks_exact_mut(4).zip(self.h.iter()) {
+    #[inline]
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        let bs = Self::BlockSize::U64;
+        let bit_len = 8 * (buffer.get_pos() as u64 + bs * self.block_len);
+
+        let mut h = self.h;
+        buffer.len64_padding_be(bit_len, |b| compress(&mut h, from_ref(b)));
+        for (chunk, v) in out.chunks_exact_mut(4).zip(h.iter()) {
             chunk.copy_from_slice(&v.to_be_bytes());
         }
     }
 }
 
-impl Reset for Sha1 {
-    fn reset(&mut self) {
-        self.h = H;
-        self.len = 0;
-        self.buffer.reset();
+impl Default for Sha1Core {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            h: H,
+            block_len: 0,
+        }
     }
 }
 
-opaque_debug::implement!(Sha1);
-digest::impl_write!(Sha1);
+impl Reset for Sha1Core {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl AlgorithmName for Sha1Core {
+    const NAME: &'static str = "Sha1";
+}
+
+impl fmt::Debug for Sha1Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Sha1Core { ... }")
+    }
+}
+
+/// SHA-1 hasher state.
+pub type Sha1 = UpdateCoreWrapper<Sha1Core>;

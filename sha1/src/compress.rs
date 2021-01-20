@@ -1,6 +1,3 @@
-use digest::consts::U64;
-use digest::generic_array::GenericArray;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "force-soft")] {
         mod soft;
@@ -25,7 +22,7 @@ cfg_if::cfg_if! {
     }
 }
 
-pub fn compress(state: &mut [u32; 5], blocks: &[GenericArray<u8, U64>]) {
+pub fn compress(state: &mut [u32; 5], blocks: &[super::Block]) {
     // SAFETY: GenericArray<u8, U64> and [u8; 64] have
     // exactly the same memory layout
     #[allow(unsafe_code)]

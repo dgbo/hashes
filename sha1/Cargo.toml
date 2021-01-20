@@ -15,9 +15,7 @@ categories = ["cryptography", "no-std"]
 name = "sha1"
 
 [dependencies]
-digest = "0.9"
-block-buffer = "0.9"
-opaque-debug = "0.3"
+digest = { version = "0.10.0-pre.1", features = ["core-api"] }
 cfg-if = "1.0"
 sha1-asm = { version = "0.4", optional = true }
 
@@ -28,15 +26,11 @@ cpuid-bool = "0.1"
 libc = { version = "0.2.82", optional = true }
 
 [dev-dependencies]
-digest = { version = "0.9", features = ["dev"] }
+digest = { version = "0.10.0-pre.1", features = ["dev"] }
 hex-literal = "0.2"
 
 [features]
 default = ["std"]
 std = ["digest/std"]
 asm = ["sha1-asm", "libc"]
-# Force software implementation
-force-soft = []
-
-# DEPRECATED: use `asm` instead
-asm-aarch64 = ["asm"]
+force-soft = [] # Force software implementation

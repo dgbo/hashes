@@ -1,6 +1,5 @@
 use core::{convert::TryInto, mem::swap};
-use digest::generic_array::typenum::U64;
-use digest::generic_array::GenericArray;
+use super::{GenericArray, U64};
 
 pub const HALF_DIGEST_BUF_LEN: usize = 5;
 pub const DIGEST_BUF_LEN: usize = 10;
@@ -19,7 +18,7 @@ pub const H0: [u32; DIGEST_BUF_LEN] = [
     0x3c2d_1e0f,
 ];
 
-type Block = GenericArray<u8, U64>;
+pub(crate) type Block = GenericArray<u8, U64>;
 
 macro_rules! round(
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr,
@@ -145,7 +144,7 @@ macro_rules! process_block(
     });
 );
 
-pub fn process_msg_block(h: &mut [u32; DIGEST_BUF_LEN], data: &Block) {
+pub fn compress(h: &mut [u32; DIGEST_BUF_LEN], data: &Block) {
     let mut w = [0u32; WORK_BUF_LEN];
     for (o, chunk) in w.iter_mut().zip(data.chunks_exact(4)) {
         *o = u32::from_le_bytes(chunk.try_into().unwrap());

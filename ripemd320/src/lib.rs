@@ -14,9 +14,11 @@
 //!
 //! // acquire hash digest in the form of GenericArray,
 //! // which in this case is equivalent to [u8; 40]
-//! let expected = hex!("f1c1c231d301abcf2d7daae0269ff3e7bc68e623ad723aa068d316b056d26b7d1bb6f0cc0f28336d");
 //! let result = hasher.finalize();
-//! assert_eq!(&result[..], &expected[..]);
+//! assert_eq!(&result[..], &hex!("
+//!     f1c1c231d301abcf2d7daae0269ff3e7bc68e623
+//!     ad723aa068d316b056d26b7d1bb6f0cc0f28336d
+//! ")[..]);
 //! ```
 //!
 //! Also see [RustCrypto/hashes][2] readme.
@@ -32,71 +34,83 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[cfg(feature = "std")]
-extern crate std;
-
-mod block;
-
 pub use digest::{self, Digest};
 
-use crate::block::{process_msg_block, DIGEST_BUF_LEN, H0};
-
-use block_buffer::BlockBuffer;
+use core::fmt;
+use digest::block_buffer::BlockBuffer;
 use digest::consts::{U40, U64};
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
+use digest::generic_array::{GenericArray, typenum::Unsigned};
+use digest::{AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper};
 
-/// Structure representing the state of a ripemd320 computation
+mod block;
+use block::{compress, DIGEST_BUF_LEN, H0, Block};
+
+/// Core RIPEMD-320 hasher state.
 #[derive(Clone)]
-pub struct Ripemd320 {
+pub struct Ripemd320Core {
     h: [u32; DIGEST_BUF_LEN],
-    len: u64,
-    buffer: BlockBuffer<U64>,
+    block_len: u64,
 }
 
-impl Default for Ripemd320 {
-    fn default() -> Self {
-        Ripemd320 {
-            h: H0,
-            len: 0,
-            buffer: Default::default(),
+impl UpdateCore for Ripemd320Core {
+    type BlockSize = U64;
+
+    #[inline]
+    fn update_blocks(&mut self, blocks: &[Block]) {
+        // Assumes that `block_len` does not overflow
+        self.block_len += blocks.len() as u64;
+        for block in blocks {
+            compress(&mut self.h, block);
         }
     }
 }
 
-impl BlockInput for Ripemd320 {
-    type BlockSize = U64;
-}
-
-impl Update for Ripemd320 {
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
-        // Assumes that input.len() can be converted to u64 without overflow
-        self.len += input.len() as u64;
-        let h = &mut self.h;
-        self.buffer.input_block(input, |b| process_msg_block(h, b));
-    }
-}
-
-impl FixedOutputDirty for Ripemd320 {
+impl FixedOutputCore for Ripemd320Core {
     type OutputSize = U40;
 
-    fn finalize_into_dirty(&mut self, out: &mut digest::Output<Self>) {
-        let h = &mut self.h;
-        let l = self.len << 3;
-        self.buffer.len64_padding_le(l, |b| process_msg_block(h, b));
-        for (chunk, v) in out.chunks_exact_mut(4).zip(self.h.iter()) {
+    #[inline]
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        let bs = Self::BlockSize::U64;
+        let bit_len = 8 * (buffer.get_pos() as u64 + bs * self.block_len);
+        let mut h = self.h;
+        buffer.len64_padding_le(bit_len, |block| compress(&mut h, block));
+
+        for (chunk, v) in out.chunks_exact_mut(4).zip(h.iter()) {
             chunk.copy_from_slice(&v.to_le_bytes());
         }
     }
 }
 
-impl Reset for Ripemd320 {
-    fn reset(&mut self) {
-        self.buffer.reset();
-        self.len = 0;
-        self.h = H0;
+impl Default for Ripemd320Core {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            h: H0,
+            block_len: 0,
+        }
     }
 }
 
-opaque_debug::implement!(Ripemd320);
-digest::impl_write!(Ripemd320);
+impl Reset for Ripemd320Core {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl AlgorithmName for Ripemd320Core {
+    const NAME: &'static str = "Ripemd320";
+}
+
+impl fmt::Debug for Ripemd320Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Ripemd320Core { ... }")
+    }
+}
+
+/// RIPEMD-320 hasher state.
+pub type Ripemd320 = UpdateCoreWrapper<Ripemd320Core>;

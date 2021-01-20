@@ -31,11 +31,9 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[cfg(feature = "std")]
-extern crate std;
-
 pub use digest::{self, Digest};
 
+use core::fmt;
 use digest::{
     block_buffer::{block_padding::Pkcs7, BlockBuffer},
     generic_array::{typenum::U16, GenericArray},
@@ -54,10 +52,10 @@ pub struct Md2Core {
 }
 
 impl Md2Core {
-    fn compress(&mut self, input: &Block) {
+    fn compress(&mut self, block: &Block) {
         // Update state
         for j in 0..16 {
-            self.x[16 + j] = input[j];
+            self.x[16 + j] = block[j];
             self.x[32 + j] = self.x[16 + j] ^ self.x[j];
         }
 
@@ -73,34 +71,11 @@ impl Md2Core {
         // Update checksum
         let mut l = self.checksum[15];
         for j in 0..16 {
-            self.checksum[j] ^= consts::S[(input[j] ^ l) as usize];
+            self.checksum[j] ^= consts::S[(block[j] ^ l) as usize];
             l = self.checksum[j];
         }
     }
 }
-
-impl Default for Md2Core {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            x: [0; 48],
-            checksum: Default::default(),
-        }
-    }
-}
-
-impl Reset for Md2Core {
-    #[inline]
-    fn reset(&mut self) {
-        *self = Default::default();
-    }
-}
-
-impl AlgorithmName for Md2Core {
-    const NAME: &'static str = "Md2";
-}
-
-opaque_debug::implement!(Md2Core);
 
 impl UpdateCore for Md2Core {
     type BlockSize = U16;
@@ -127,6 +102,33 @@ impl FixedOutputCore for Md2Core {
         let checksum = self.checksum;
         self.compress(&checksum);
         out.copy_from_slice(&self.x[0..16]);
+    }
+}
+
+impl Default for Md2Core {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            x: [0; 48],
+            checksum: Default::default(),
+        }
+    }
+}
+
+impl Reset for Md2Core {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl AlgorithmName for Md2Core {
+    const NAME: &'static str = "Md2";
+}
+
+impl fmt::Debug for Md2Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Md2Core { ... }")
     }
 }
 

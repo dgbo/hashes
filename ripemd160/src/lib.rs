@@ -31,71 +31,85 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[cfg(feature = "std")]
-extern crate std;
-
-mod block;
-
 pub use digest::{self, Digest};
 
-use crate::block::{process_msg_block, DIGEST_BUF_LEN, H0};
-use block_buffer::BlockBuffer;
-use digest::consts::{U20, U64};
-use digest::{BlockInput, FixedOutputDirty, Reset, Update};
+use core::fmt;
+use digest::{
+    block_buffer::BlockBuffer,
+    consts::{U20, U64},
+    generic_array::{typenum::Unsigned, GenericArray},
+    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+};
 
-/// Structure representing the state of a Ripemd160 computation
+mod block;
+use block::{compress, Block, DIGEST_BUF_LEN, H0};
+
+/// Core RIPEMD-160 hasher state.
 #[derive(Clone)]
-pub struct Ripemd160 {
+pub struct Ripemd160Core {
     h: [u32; DIGEST_BUF_LEN],
-    len: u64,
-    buffer: BlockBuffer<U64>,
+    block_len: u64,
 }
 
-impl Default for Ripemd160 {
-    fn default() -> Self {
-        Ripemd160 {
-            h: H0,
-            len: 0,
-            buffer: Default::default(),
+impl UpdateCore for Ripemd160Core {
+    type BlockSize = U64;
+
+    #[inline]
+    fn update_blocks(&mut self, blocks: &[Block]) {
+        // Assumes that `block_len` does not overflow
+        self.block_len += blocks.len() as u64;
+        for block in blocks {
+            compress(&mut self.h, block);
         }
     }
 }
 
-impl BlockInput for Ripemd160 {
-    type BlockSize = U64;
-}
-
-impl Update for Ripemd160 {
-    fn update(&mut self, input: impl AsRef<[u8]>) {
-        let input = input.as_ref();
-        // Assumes that input.len() can be converted to u64 without overflow
-        self.len += input.len() as u64;
-        let h = &mut self.h;
-        self.buffer.input_block(input, |b| process_msg_block(h, b));
-    }
-}
-
-impl FixedOutputDirty for Ripemd160 {
+impl FixedOutputCore for Ripemd160Core {
     type OutputSize = U20;
 
-    fn finalize_into_dirty(&mut self, out: &mut digest::Output<Self>) {
-        let h = &mut self.h;
-        let l = self.len << 3;
-        self.buffer.len64_padding_le(l, |b| process_msg_block(h, b));
+    #[inline]
+    fn finalize_fixed_core(
+        &mut self,
+        buffer: &mut BlockBuffer<Self::BlockSize>,
+        out: &mut GenericArray<u8, Self::OutputSize>,
+    ) {
+        let bs = Self::BlockSize::U64;
+        let bit_len = 8 * (buffer.get_pos() as u64 + bs * self.block_len);
+        let mut h = self.h;
+        buffer.len64_padding_le(bit_len, |block| compress(&mut h, block));
 
-        for (chunk, v) in out.chunks_exact_mut(4).zip(self.h.iter()) {
+        for (chunk, v) in out.chunks_exact_mut(4).zip(h.iter()) {
             chunk.copy_from_slice(&v.to_le_bytes());
         }
     }
 }
 
-impl Reset for Ripemd160 {
-    fn reset(&mut self) {
-        self.buffer.reset();
-        self.len = 0;
-        self.h = H0;
+impl Default for Ripemd160Core {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            h: H0,
+            block_len: 0,
+        }
     }
 }
 
-opaque_debug::implement!(Ripemd160);
-digest::impl_write!(Ripemd160);
+impl Reset for Ripemd160Core {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl AlgorithmName for Ripemd160Core {
+    const NAME: &'static str = "Ripemd160";
+}
+
+impl fmt::Debug for Ripemd160Core {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Ripemd160Core { ... }")
+    }
+}
+
+/// RIPEMD-160 hasher state.
+pub type Ripemd160 = UpdateCoreWrapper<Ripemd160Core>;

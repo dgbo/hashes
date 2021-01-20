@@ -59,17 +59,122 @@
 )]
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[cfg(feature = "std")]
-extern crate std;
+pub use digest::{self, Digest};
+
+use core::{fmt, slice::from_ref, mem::size_of};
+use digest::{
+    block_buffer::BlockBuffer,
+    generic_array::{
+        typenum::{Unsigned, U28, U32, U48, U64, U128},
+        GenericArray,
+    },
+    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+};
 
 mod consts;
 mod sha256;
 mod sha512;
 
-pub use digest::{self, Digest};
 #[cfg(feature = "compress")]
 pub use sha256::compress256;
-pub use sha256::{Sha224, Sha256};
 #[cfg(feature = "compress")]
 pub use sha512::compress512;
-pub use sha512::{Sha384, Sha512, Sha512Trunc224, Sha512Trunc256};
+
+macro_rules! implement {
+    (
+        $name:ident, $full_name:ident, $init:expr, $block_size:ty, $out_size:ty,
+        $compress:expr, $pad:ident, $word:ty, $dword:ty, $alg_name:expr,
+    ) => {
+        #[doc = "Core "]
+        #[doc = $alg_name]
+        #[doc = " hasher state."]
+        #[derive(Clone)]
+        pub struct $name {
+            state: [$word; 8],
+            block_len: $dword,
+        }
+
+        impl UpdateCore for $name {
+            type BlockSize = $block_size;
+
+            #[inline]
+            fn update_blocks(&mut self, blocks: &[GenericArray<u8, $block_size>]) {
+                self.block_len += blocks.len() as $dword;
+                $compress(&mut self.state, blocks);
+            }
+        }
+
+        impl FixedOutputCore for $name {
+            type OutputSize = $out_size;
+
+            #[inline]
+            fn finalize_fixed_core(
+                &mut self,
+                buffer: &mut BlockBuffer<Self::BlockSize>,
+                out: &mut GenericArray<u8, Self::OutputSize>,
+            ) {
+                let bs = Self::BlockSize::U64 as $dword;
+                let bit_len = 8 * (buffer.get_pos() as $dword + bs * self.block_len);
+                let s = &mut self.state;
+                buffer.$pad(bit_len, |b| $compress(s, from_ref(b)));
+                let n = size_of::<$word>();
+                for (chunk, v) in out.chunks_mut(n).zip(s.iter()) {
+                    chunk.copy_from_slice(&v.to_be_bytes()[..chunk.len()]);
+                }
+            }
+        }
+
+        impl Default for $name {
+            #[inline]
+            fn default() -> Self {
+                Self { state: $init, block_len: 0 }
+            }
+        }
+
+        impl Reset for $name {
+            #[inline]
+            fn reset(&mut self) {
+                *self = Default::default();
+            }
+        }
+
+        impl AlgorithmName for $name {
+            const NAME: &'static str = stringify!($full_name);
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str(concat!(stringify!($name), " { ... }"))
+            }
+        }
+
+        #[doc = $alg_name]
+        #[doc = " hasher state."]
+        pub type $full_name = UpdateCoreWrapper<$name>;
+    };
+}
+
+implement!(
+    Sha224Core, Sha224, consts::H224, U64, U28,
+    sha256::compress256, len64_padding_be, u32, u64, "SHA-224",
+);
+implement!(
+    Sha256Core, Sha256, consts::H256, U64, U32,
+    sha256::compress256, len64_padding_be, u32, u64, "SHA-256",
+);
+implement!(
+    Sha512Trunc224Core, Sha512Trunc224, consts::H512_TRUNC_224, U128, U28,
+    sha512::compress512, len128_padding_be, u64, u128, "SHA-512/224",
+);
+implement!(
+    Sha512Trunc256Core, Sha512Trunc256, consts::H512_TRUNC_256, U128, U32,
+    sha512::compress512, len128_padding_be, u64, u128, "SHA-512/256",
+);
+implement!(
+    Sha384Core, Sha384, consts::H384, U128, U48,
+    sha512::compress512, len128_padding_be, u64, u128, "SHA-384",
+);
+implement!(
+    Sha512Core, Sha512, consts::H512, U128, U64,
+    sha512::compress512, len128_padding_be, u64, u128, "SHA-512",
+);

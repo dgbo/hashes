@@ -114,6 +114,13 @@ fn psi(block: &mut Block) {
     block.copy_from_slice(&out);
 }
 
+#[inline(always)]
+fn adc(a: &mut u64, b: u64, carry: &mut u64) {
+    let ret = (*a as u128) + (b as u128) + (*carry as u128);
+    *a = ret as u64;
+    *carry = (ret >> 64) as u64;
+}
+
 /// Core GOST94 algorithm generic over parameters.
 #[derive(Clone)]
 pub struct Gost94Core<P: Gost94Params> {
@@ -180,21 +187,10 @@ impl<P: Gost94Params> Gost94Core<P> {
     }
 
     #[inline(always)]
-    fn process_block(&mut self, block: &GenericArray<u8, U32>) {
+    fn compress(&mut self, block: &GenericArray<u8, U32>) {
         let block = unsafe { &*(block.as_ptr() as *const [u8; 32]) };
         self.f(block);
         self.update_sigma(block);
-    }
-}
-
-impl<P: Gost94Params> AlgorithmName for Gost94Core<P> {
-    const NAME: &'static str = P::NAME;
-}
-
-impl<P: Gost94Params> fmt::Debug for Gost94Core<P> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.write_str(P::NAME)?;
-        f.write_str("Core { .. }")
     }
 }
 
@@ -205,28 +201,7 @@ impl<P: Gost94Params> UpdateCore for Gost94Core<P> {
     fn update_blocks(&mut self, blocks: &[GenericArray<u8, Self::BlockSize>]) {
         let len = Self::BlockSize::USIZE * blocks.len();
         self.update_n(len);
-        blocks.iter().for_each(|b| self.process_block(b));
-    }
-}
-
-impl<P: Gost94Params> Reset for Gost94Core<P> {
-    #[inline]
-    fn reset(&mut self) {
-        self.n = Default::default();
-        self.h = P::H0;
-        self.sigma = Default::default();
-    }
-}
-
-impl<P: Gost94Params> Default for Gost94Core<P> {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            h: P::H0,
-            n: Default::default(),
-            sigma: Default::default(),
-            _m: Default::default(),
-        }
+        blocks.iter().for_each(|b| self.compress(b));
     }
 }
 
@@ -242,7 +217,7 @@ impl<P: Gost94Params> FixedOutputCore for Gost94Core<P> {
         if buffer.get_pos() != 0 {
             self.update_n(buffer.get_pos());
             let block = buffer.pad_with::<ZeroPadding>();
-            self.process_block(block);
+            self.compress(block);
         }
 
         let mut buf = Block::default();
@@ -260,9 +235,32 @@ impl<P: Gost94Params> FixedOutputCore for Gost94Core<P> {
     }
 }
 
-#[inline(always)]
-fn adc(a: &mut u64, b: u64, carry: &mut u64) {
-    let ret = (*a as u128) + (b as u128) + (*carry as u128);
-    *a = ret as u64;
-    *carry = (ret >> 64) as u64;
+impl<P: Gost94Params> Default for Gost94Core<P> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            h: P::H0,
+            n: Default::default(),
+            sigma: Default::default(),
+            _m: Default::default(),
+        }
+    }
+}
+
+impl<P: Gost94Params> Reset for Gost94Core<P> {
+    #[inline]
+    fn reset(&mut self) {
+        *self = Default::default();
+    }
+}
+
+impl<P: Gost94Params> AlgorithmName for Gost94Core<P> {
+    const NAME: &'static str = P::NAME;
+}
+
+impl<P: Gost94Params> fmt::Debug for Gost94Core<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.write_str(P::NAME)?;
+        f.write_str("Core { .. }")
+    }
 }
