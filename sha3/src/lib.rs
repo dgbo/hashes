@@ -68,11 +68,11 @@ pub use digest::{self, Digest};
 
 use core::fmt;
 use digest::{
-    consts::{U104, U136, U144, U168, U200, U28, U32, U48, U64, U72},
     block_buffer::BlockBuffer,
+    consts::{U104, U136, U144, U168, U200, U28, U32, U48, U64, U72},
     generic_array::GenericArray,
-    AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
-    ExtendableOutputCore, XofReaderCore, XofReaderCoreWrapper,
+    AlgorithmName, ExtendableOutputCore, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
+    XofReaderCore, XofReaderCoreWrapper,
 };
 
 mod paddings;

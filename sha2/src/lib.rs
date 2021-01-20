@@ -61,11 +61,11 @@
 
 pub use digest::{self, Digest};
 
-use core::{fmt, slice::from_ref, mem::size_of};
+use core::{fmt, mem::size_of, slice::from_ref};
 use digest::{
     block_buffer::BlockBuffer,
     generic_array::{
-        typenum::{Unsigned, U28, U32, U48, U64, U128},
+        typenum::{Unsigned, U128, U28, U32, U48, U64},
         GenericArray,
     },
     AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,
@@ -127,7 +127,10 @@ macro_rules! implement {
         impl Default for $name {
             #[inline]
             fn default() -> Self {
-                Self { state: $init, block_len: 0 }
+                Self {
+                    state: $init,
+                    block_len: 0,
+                }
             }
         }
 
@@ -155,26 +158,74 @@ macro_rules! implement {
 }
 
 implement!(
-    Sha224Core, Sha224, consts::H224, U64, U28,
-    sha256::compress256, len64_padding_be, u32, u64, "SHA-224",
+    Sha224Core,
+    Sha224,
+    consts::H224,
+    U64,
+    U28,
+    sha256::compress256,
+    len64_padding_be,
+    u32,
+    u64,
+    "SHA-224",
 );
 implement!(
-    Sha256Core, Sha256, consts::H256, U64, U32,
-    sha256::compress256, len64_padding_be, u32, u64, "SHA-256",
+    Sha256Core,
+    Sha256,
+    consts::H256,
+    U64,
+    U32,
+    sha256::compress256,
+    len64_padding_be,
+    u32,
+    u64,
+    "SHA-256",
 );
 implement!(
-    Sha512Trunc224Core, Sha512Trunc224, consts::H512_TRUNC_224, U128, U28,
-    sha512::compress512, len128_padding_be, u64, u128, "SHA-512/224",
+    Sha512Trunc224Core,
+    Sha512Trunc224,
+    consts::H512_TRUNC_224,
+    U128,
+    U28,
+    sha512::compress512,
+    len128_padding_be,
+    u64,
+    u128,
+    "SHA-512/224",
 );
 implement!(
-    Sha512Trunc256Core, Sha512Trunc256, consts::H512_TRUNC_256, U128, U32,
-    sha512::compress512, len128_padding_be, u64, u128, "SHA-512/256",
+    Sha512Trunc256Core,
+    Sha512Trunc256,
+    consts::H512_TRUNC_256,
+    U128,
+    U32,
+    sha512::compress512,
+    len128_padding_be,
+    u64,
+    u128,
+    "SHA-512/256",
 );
 implement!(
-    Sha384Core, Sha384, consts::H384, U128, U48,
-    sha512::compress512, len128_padding_be, u64, u128, "SHA-384",
+    Sha384Core,
+    Sha384,
+    consts::H384,
+    U128,
+    U48,
+    sha512::compress512,
+    len128_padding_be,
+    u64,
+    u128,
+    "SHA-384",
 );
 implement!(
-    Sha512Core, Sha512, consts::H512, U128, U64,
-    sha512::compress512, len128_padding_be, u64, u128, "SHA-512",
+    Sha512Core,
+    Sha512,
+    consts::H512,
+    U128,
+    U64,
+    sha512::compress512,
+    len128_padding_be,
+    u64,
+    u128,
+    "SHA-512",
 );

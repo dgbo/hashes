@@ -1,7 +1,4 @@
-use digest::block_buffer::block_padding::{
-    Padding, UnpadError, Block,
-    generic_array::ArrayLength,
-};
+use digest::block_buffer::block_padding::{generic_array::ArrayLength, Block, Padding, UnpadError};
 
 macro_rules! impl_padding {
     ($name:ident, $pad:expr) => {

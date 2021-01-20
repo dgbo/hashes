@@ -39,11 +39,11 @@ pub use digest::{self, Digest};
 use core::fmt;
 use digest::block_buffer::BlockBuffer;
 use digest::consts::{U40, U64};
-use digest::generic_array::{GenericArray, typenum::Unsigned};
+use digest::generic_array::{typenum::Unsigned, GenericArray};
 use digest::{AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper};
 
 mod block;
-use block::{compress, DIGEST_BUF_LEN, H0, Block};
+use block::{compress, Block, DIGEST_BUF_LEN, H0};
 
 /// Core RIPEMD-320 hasher state.
 #[derive(Clone)]

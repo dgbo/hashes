@@ -43,7 +43,7 @@ pub use digest::{self, Digest};
 
 use core::fmt;
 use digest::{
-    block_buffer::{BlockBuffer, block_padding::Iso7816},
+    block_buffer::{block_padding::Iso7816, BlockBuffer},
     consts::{U24, U28, U32, U48, U64},
     generic_array::{typenum::Unsigned, GenericArray},
     AlgorithmName, FixedOutputCore, Reset, UpdateCore, UpdateCoreWrapper,

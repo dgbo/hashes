@@ -44,7 +44,9 @@ macro_rules! sha3_impl {
         impl Default for $name {
             #[inline]
             fn default() -> Self {
-                Self { state: Default::default() }
+                Self {
+                    state: Default::default(),
+                }
             }
         }
 
@@ -106,14 +108,18 @@ macro_rules! shake_impl {
             ) -> Self::ReaderCore {
                 let block = buffer.pad_with::<$padding>();
                 self.state.absorb_block(block);
-                $reader { state: self.state.clone() }
+                $reader {
+                    state: self.state.clone(),
+                }
             }
         }
 
         impl Default for $name {
             #[inline]
             fn default() -> Self {
-                Self { state: Default::default() }
+                Self {
+                    state: Default::default(),
+                }
             }
         }
 

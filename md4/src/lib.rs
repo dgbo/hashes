@@ -73,7 +73,8 @@ impl FixedOutputCore for Md4Core {
         buffer: &mut BlockBuffer<Self::BlockSize>,
         out: &mut GenericArray<u8, Self::OutputSize>,
     ) {
-        let bit_len = self.block_len
+        let bit_len = self
+            .block_len
             .wrapping_mul(Self::BlockSize::U64)
             .wrapping_add(buffer.get_pos() as u64)
             .wrapping_mul(8);
@@ -90,7 +91,10 @@ impl Default for Md4Core {
     #[inline]
     fn default() -> Self {
         let state = [0x6745_2301, 0xEFCD_AB89, 0x98BA_DCFE, 0x1032_5476];
-        Self { state, block_len: 0 }
+        Self {
+            state,
+            block_len: 0,
+        }
     }
 }
 

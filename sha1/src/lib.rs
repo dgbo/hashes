@@ -47,7 +47,7 @@ mod compress;
 mod consts;
 
 use compress::compress;
-use consts::{STATE_LEN, H};
+use consts::{H, STATE_LEN};
 
 type Block = GenericArray<u8, U64>;
 
@@ -90,10 +90,7 @@ impl FixedOutputCore for Sha1Core {
 impl Default for Sha1Core {
     #[inline]
     fn default() -> Self {
-        Self {
-            h: H,
-            block_len: 0,
-        }
+        Self { h: H, block_len: 0 }
     }
 }
 

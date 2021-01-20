@@ -1,6 +1,6 @@
-use core::convert::TryInto;
-use crate::consts::*;
 use super::Block;
+use crate::consts::*;
+use core::convert::TryInto;
 
 pub(crate) fn compress(state: &mut [u64; 8], buf: &Block) {
     let mut k = [0u64; 8];

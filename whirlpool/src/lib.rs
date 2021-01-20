@@ -44,8 +44,8 @@
 
 pub use digest::{self, Digest};
 
-mod consts;
 mod compress;
+mod consts;
 use compress::compress;
 
 use core::fmt;
@@ -71,8 +71,8 @@ impl UpdateCore for WhirlpoolCore {
     #[inline]
     fn update_blocks(&mut self, blocks: &[Block]) {
         // number of bits in one block
-        let n = 8*Self::BlockSize::U64;
-        self.update_len(n*(blocks.len() as u64));
+        let n = 8 * Self::BlockSize::U64;
+        self.update_len(n * (blocks.len() as u64));
         for block in blocks {
             compress(&mut self.state, block)
         }
@@ -89,9 +89,9 @@ impl FixedOutputCore for WhirlpoolCore {
         out: &mut GenericArray<u8, Self::OutputSize>,
     ) {
         let pos = buffer.get_pos();
-        self.update_len(8*pos as u64);
+        self.update_len(8 * pos as u64);
 
-        let mut buf = [0u8; 4*8];
+        let mut buf = [0u8; 4 * 8];
         for (chunk, v) in buf.chunks_exact_mut(8).zip(self.bit_len.iter()) {
             chunk.copy_from_slice(&v.to_be_bytes());
         }

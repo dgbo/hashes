@@ -83,7 +83,8 @@ impl FixedOutputCore for Md5Core {
         buffer: &mut BlockBuffer<Self::BlockSize>,
         out: &mut GenericArray<u8, Self::OutputSize>,
     ) {
-        let bit_len = self.block_len
+        let bit_len = self
+            .block_len
             .wrapping_mul(Self::BlockSize::U64)
             .wrapping_add(buffer.get_pos() as u64)
             .wrapping_mul(8);
