@@ -9,7 +9,7 @@
 //! // create Streebog256 hasher state
 //! let mut hasher = Streebog256::new();
 //! // write input message
-//! hasher.update(&b"The quick brown fox jumps over the lazy dog");
+//! hasher.update("The quick brown fox jumps over the lazy dog");
 //! // read hash digest (it will consume hasher)
 //! let result = hasher.finalize();
 //!
