@@ -1,16 +1,16 @@
-name: ripemd160
+name: ripemd
 
 on:
   pull_request:
     paths:
-      - "ripemd160/**"
+      - "ripemd/**"
       - "Cargo.*"
   push:
     branches: master
 
 defaults:
   run:
-    working-directory: ripemd160
+    working-directory: ripemd
 
 env:
   CARGO_INCREMENTAL: 0
