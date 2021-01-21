@@ -1,4 +1,4 @@
-# RustCrypto: RIPEMD160
+# RustCrypto: RIPEMD
 
 [![crate][crate-image]][crate-link]
 [![Docs][docs-image]][docs-link]
@@ -7,7 +7,7 @@
 [![Project Chat][chat-image]][chat-link]
 [![Build Status][build-image]][build-link]
 
-Pure Rust implementation of the [RIPEMD160 hash function][1].
+Pure Rust implementation of the [RIPEMD] hash functions.
 
 [Documentation][docs-link]
 
@@ -53,4 +53,4 @@ dual licensed as above, without any additional terms or conditions.
 
 [//]: # (general links)
 
-[1]: https://en.wikipedia.org/wiki/RIPEMD
+[RIPEMD]: https://en.wikipedia.org/wiki/RIPEMD

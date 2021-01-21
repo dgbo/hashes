@@ -1,4 +1,4 @@
-use super::{GenericArray, U64};
+use super::Block;
 use core::convert::TryInto;
 
 pub const DIGEST_BUF_LEN: usize = 5;
@@ -11,8 +11,6 @@ pub const H0: [u32; DIGEST_BUF_LEN] = [
     0x1032_5476,
     0xc3d2_e1f0,
 ];
-
-pub(crate) type Block = GenericArray<u8, U64>;
 
 macro_rules! round(
     ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr,

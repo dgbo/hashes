@@ -235,16 +235,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
-name = "ripemd160"
-version = "0.9.1"
-dependencies = [
- "digest 0.10.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex-literal",
-]
-
-[[package]]
-name = "ripemd320"
-version = "0.9.0"
+name = "ripemd"
+version = "0.10.0"
 dependencies = [
  "digest 0.10.0-pre.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex-literal",

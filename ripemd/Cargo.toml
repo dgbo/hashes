@@ -1,14 +1,14 @@
 [package]
-name = "ripemd320"
-version = "0.9.0"
-description = "RIPEMD-320 hash function"
+name = "ripemd"
+version = "0.10.0"
+description = "Pure Rust implementation of the RIPEMD hash functions"
 authors = ["RustCrypto Developers"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2018"
-documentation = "https://docs.rs/ripemd320"
+documentation = "https://docs.rs/ripemd"
 repository = "https://github.com/RustCrypto/hashes"
-keywords = ["crypto", "ripemd320", "hash", "digest"]
+keywords = ["crypto", "ripemd", "hash", "digest"]
 categories = ["cryptography", "no-std"]
 
 [dependencies]
